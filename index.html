@@ -150,6 +150,42 @@
                 right: 20px;
             }
         }
+        #shoot-button {
+            position: fixed;
+            right: 40px;
+            top: 40px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 100, 100, 0.4);
+            border: 2px solid #ff6666;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            cursor: pointer;
+            touch-action: none;
+        }
+        @media (max-width: 768px) {
+            #shoot-button {
+                width: 80px;
+                height: 80px;
+                font-size: 20px;
+                right: 30px;
+                top: 30px;
+            }
+        }
+        @media (max-width: 480px) {
+            #shoot-button {
+                width: 60px;
+                height: 60px;
+                font-size: 16px;
+                right: 20px;
+                top: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -163,6 +199,7 @@
         ←/→ - Turn Left/Right (Roll when airborne)<br>
         <div id="takeoff-message" style="display: none; color: #ff0; font-size: 1.2em; margin-top: 10px; font-weight: bold;">TAKEOFF</div>
     </div>
+    <div id="shoot-button" class="touch-button">FIRE</div>
     <div id="throttle-controls" class="touch-controls">
         <div class="touch-button" id="throttle-up">W</div>
         <div class="touch-button" id="throttle-down">S</div>
@@ -182,42 +219,134 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Create airplane with more visible parts
+        // Create airplane (Cessna-style)
         const airplane = new THREE.Group();
         
         // Fuselage
         const fuselage = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 0.8, 4),  // Made longer and taller
-            new THREE.MeshPhongMaterial({ color: 0x3366cc })  // Blue color
+            new THREE.CylinderGeometry(0.4, 0.4, 4, 12),
+            new THREE.MeshPhongMaterial({ 
+                color: 0xFFFFFF,  // White color
+                shininess: 100
+            })
         );
-        
-        // Main wing
-        const wing = new THREE.Mesh(
-            new THREE.BoxGeometry(7, 0.2, 1.5),  // Made wider
-            new THREE.MeshPhongMaterial({ color: 0x3366cc })
-        );
-        wing.position.y = 0.1;  // Slightly above center
-        
-        // Tail wing
-        const tailWing = new THREE.Mesh(
-            new THREE.BoxGeometry(2, 0.2, 0.8),
-            new THREE.MeshPhongMaterial({ color: 0x3366cc })
-        );
-        tailWing.position.z = -1.8;  // Place at back
-        tailWing.position.y = 0.3;   // Higher than main wing
-        
-        // Vertical stabilizer
-        const verticalStab = new THREE.Mesh(
-            new THREE.BoxGeometry(0.1, 1, 1),
-            new THREE.MeshPhongMaterial({ color: 0x3366cc })
-        );
-        verticalStab.position.z = -1.8;
-        verticalStab.position.y = 0.5;
+        fuselage.rotation.x = -Math.PI / 2;  // Changed rotation direction
 
+        // Main wings (high-wing configuration)
+        const mainWing = new THREE.Mesh(
+            new THREE.BoxGeometry(8, 0.1, 1.5),
+            new THREE.MeshPhongMaterial({ 
+                color: 0xFFFFFF,
+                shininess: 100
+            })
+        );
+        mainWing.position.set(0, 0.4, 0);
+
+        // Wing struts (supports)
+        const strutLeft = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 0.8, 1),
+            new THREE.MeshPhongMaterial({ color: 0x888888 })
+        );
+        strutLeft.position.set(-2, -0.1, 0);
+        
+        const strutRight = strutLeft.clone();
+        strutRight.position.set(2, -0.1, 0);
+
+        // Tail section
+        const tailFin = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 1.2, 1.2),
+            new THREE.MeshPhongMaterial({ color: 0xFFFFFF })
+        );
+        tailFin.position.set(0, 0.6, 2);  // Changed from -2 to 2
+
+        const tailWing = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5, 0.1, 0.8),
+            new THREE.MeshPhongMaterial({ color: 0xFFFFFF })
+        );
+        tailWing.position.set(0, 0.3, 2);  // Changed from -2 to 2
+
+        // Nose with propeller
+        const nose = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.4, 0.5, 12),
+            new THREE.MeshPhongMaterial({ color: 0x333333 })
+        );
+        nose.rotation.x = -Math.PI / 2;  // Changed rotation direction
+        nose.position.z = -2.2;  // Changed from 2.2 to -2.2
+
+        const propeller = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 1.6, 0.2),
+            new THREE.MeshPhongMaterial({ color: 0x333333 })
+        );
+        propeller.position.z = -2.5;  // Changed from 2.5 to -2.5
+
+        // Create landing gear struts
+        const strutGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+        const strutMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+
+        // Front landing gear
+        const leftGearGroup = new THREE.Group();  // Create groups for each gear
+        const leftGearStrut = new THREE.Mesh(strutGeometry, strutMaterial);
+        leftGearStrut.position.set(0, -0.4, 0);
+        leftGearGroup.add(leftGearStrut);
+        leftGearGroup.position.set(-1, 0, -0.5);  // Position the group relative to plane
+        
+        const rightGearGroup = new THREE.Group();
+        const rightGearStrut = new THREE.Mesh(strutGeometry, strutMaterial);
+        rightGearStrut.position.set(0, -0.4, 0);
+        rightGearGroup.add(rightGearStrut);
+        rightGearGroup.position.set(1, 0, -0.5);
+
+        const tailGearGroup = new THREE.Group();
+        const tailGearStrut = new THREE.Mesh(strutGeometry, strutMaterial);
+        tailGearStrut.scale.set(0.6, 0.6, 0.6);
+        tailGearStrut.position.set(0, -0.2, 0);
+        tailGearGroup.add(tailGearStrut);
+        tailGearGroup.position.set(0, 0, 1.8);
+
+        // Create wheels
+        const wheelGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8);
+        wheelGeometry.rotateZ(Math.PI / 2);
+        const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+
+        const leftWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        leftWheel.position.set(0, -0.8, 0);
+        leftGearStrut.add(leftWheel);
+
+        const rightWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        rightWheel.position.set(0, -0.8, 0);
+        rightGearStrut.add(rightWheel);
+
+        const tailWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        tailWheel.scale.set(0.6, 0.6, 0.6);
+        tailWheel.position.set(0, -0.5, 0);
+        tailGearStrut.add(tailWheel);
+
+        // Add gear to airplane
+        airplane.add(leftGearGroup);
+        airplane.add(rightGearGroup);
+        airplane.add(tailGearGroup);
+
+        // Windows
+        const cockpitGlass = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 0.5, 1.2),
+            new THREE.MeshPhongMaterial({
+                color: 0x88CCFF,
+                transparent: true,
+                opacity: 0.5,
+                shininess: 100
+            })
+        );
+        cockpitGlass.position.set(0, 0.5, -0.5);  // Changed z from 0.5 to -0.5
+
+        // Add all parts to airplane
         airplane.add(fuselage);
-        airplane.add(wing);
+        airplane.add(mainWing);
+        airplane.add(strutLeft);
+        airplane.add(strutRight);
+        airplane.add(tailFin);
         airplane.add(tailWing);
-        airplane.add(verticalStab);
+        airplane.add(nose);
+        airplane.add(propeller);
         scene.add(airplane);
 
         // Create runway (larger and more visible)
@@ -397,15 +526,17 @@
         const minHeight = 30;
         const maxHeight = 150;
         
+        let buildings = [];  // Array to track buildings
+        
         for (let i = 0; i < buildingCount; i++) {
             const x = (Math.random() - 0.5) * cityArea;
             const z = (Math.random() - 0.5) * cityArea;
             
-            // Don't place buildings near the runway
             if (Math.abs(x) > 50 || Math.abs(z) > 100) {
                 const height = minHeight + Math.random() * (maxHeight - minHeight);
                 const building = createBuilding(x, z, height);
                 scene.add(building);
+                buildings.push(building);  // Add to tracking array
             }
         }
 
@@ -509,6 +640,29 @@
                     e.preventDefault();
                 }
             });
+
+            // Add shoot button control
+            const shootButton = document.getElementById('shoot-button');
+            if (shootButton) {
+                function pressShootButton(e) {
+                    e.preventDefault();
+                    shoot();
+                    shootButton.style.background = 'rgba(255, 100, 100, 0.6)';
+                    shootButton.style.transform = 'scale(0.95)';
+                }
+
+                function releaseShootButton(e) {
+                    e.preventDefault();
+                    shootButton.style.background = 'rgba(255, 100, 100, 0.4)';
+                    shootButton.style.transform = 'scale(1)';
+                }
+
+                shootButton.addEventListener('touchstart', pressShootButton, { passive: false });
+                shootButton.addEventListener('touchend', releaseShootButton, { passive: false });
+                shootButton.addEventListener('mousedown', pressShootButton);
+                shootButton.addEventListener('mouseup', releaseShootButton);
+                shootButton.addEventListener('mouseleave', releaseShootButton);
+            }
         }
 
         setupTouchControls();
@@ -516,6 +670,164 @@
         // Update camera far plane to see further
         camera.far = 3000;
         camera.updateProjectionMatrix();
+
+        // After the bullet variables, add:
+        const bullets = [];
+        const explosions = [];  // Add this line
+        const bulletSpeed = 3;
+        const bulletLifetime = 1000;
+        const shootingCooldown = 100;
+        let lastShootTime = 0;
+
+        // After the bullet variables, add sound setup
+        const audioListener = new THREE.AudioListener();
+        camera.add(audioListener);
+
+        // Load explosion sound
+        const explosionSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2285/2285-preview.mp3');
+        explosionSound.volume = 0.4;
+
+        // After the audio setup, add bullet geometry and material
+        const bulletGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+        const bulletMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffff00,
+            emissive: 0xff8800
+        });
+
+        // Increase detection radius for more reliable hits
+        const explosionRadius = 50;  // Much bigger radius
+        const planeCollisionRadius = 20;  // Bigger plane collision radius
+
+        // Simplified explosion variables
+        const explosionDuration = 500;  // Shorter duration
+        const explosionParticleCount = 8;  // Much fewer particles
+        const explosionForce = 4;
+
+        // Simpler particle geometry
+        const particleGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const particleMaterial = new THREE.MeshPhongMaterial({
+            color: 0xff4400,
+            emissive: 0xff2200
+        });
+
+        // Replace explosion sound with synth bass
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playExplosionSound() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(30, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        // Simplified explosion function
+        function createExplosion(position) {
+            playExplosionSound();
+            
+            const explosion = new THREE.Group();
+            explosion.position.copy(position);
+            explosion.createdAt = Date.now();
+            
+            // Fewer particles with simpler movement
+            for (let i = 0; i < explosionParticleCount; i++) {
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                
+                // Simpler velocity calculation
+                particle.velocity = {
+                    x: (Math.random() - 0.5) * explosionForce,
+                    y: Math.random() * explosionForce,
+                    z: (Math.random() - 0.5) * explosionForce
+                };
+                
+                explosion.add(particle);
+            }
+            
+            scene.add(explosion);
+            explosions.push(explosion);
+
+            // Auto-remove explosion after duration
+            setTimeout(() => {
+                scene.remove(explosion);
+                const index = explosions.indexOf(explosion);
+                if (index > -1) {
+                    explosions.splice(index, 1);
+                }
+            }, explosionDuration);
+        }
+
+        // Optimize collision detection
+        const collisionCheckInterval = 100; // Check every 100ms
+        let lastCollisionCheck = 0;
+
+        // Fix propeller rotation variables
+        const propellerSpeed = 0.2;  // Reduced base speed
+        const minPropellerSpeed = 0.1;  // Minimum speed when idle
+        const maxPropellerSpeed = 0.8;  // Maximum speed at full throttle
+        let propellerRotation = 0;
+
+        // Create birds with larger size
+        function createBird() {
+            const bird = new THREE.Group();
+            
+            // Bird body - bigger and more visible
+            const body = new THREE.Mesh(
+                new THREE.ConeGeometry(2, 8, 4),  // Much bigger body
+                new THREE.MeshPhongMaterial({ 
+                    color: 0x222222,  // Darker color
+                    shininess: 30 
+                })
+            );
+            body.rotation.x = Math.PI / 2;
+            bird.add(body);
+            
+            // Wings - larger wingspan
+            const wingGeometry = new THREE.BoxGeometry(16, 0.3, 4);  // Much wider wings
+            const wingMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x222222,
+                shininess: 30
+            });
+            
+            const wings = new THREE.Mesh(wingGeometry, wingMaterial);
+            wings.position.y = 1;  // Raised slightly
+            bird.add(wings);
+            
+            // Add animation properties
+            bird.wingAngle = 0;
+            bird.speed = 1 + Math.random();  // Faster speed
+            bird.turnRate = (Math.random() - 0.5) * 0.02;
+            bird.yaw = Math.random() * Math.PI * 2;
+            
+            return bird;
+        }
+
+        // Adjust bird placement
+        const birds = new THREE.Group();
+        const birdCount = 30;  // Fewer birds but bigger
+        const birdArea = 1000;
+        const minBirdHeight = 150;  // Higher minimum height
+        const maxBirdHeight = 400;  // Higher maximum height
+
+        for (let i = 0; i < birdCount; i++) {
+            const bird = createBird();
+            bird.position.set(
+                (Math.random() - 0.5) * birdArea,
+                minBirdHeight + Math.random() * (maxBirdHeight - minBirdHeight),
+                (Math.random() - 0.5) * birdArea
+            );
+            birds.add(bird);
+        }
+        scene.add(birds);
 
         // Animation loop
         function animate() {
@@ -635,6 +947,76 @@
                 cloud.rotation.y += 0.001;
             });
 
+            // Update bullets and check collisions
+            const now = Date.now();
+            if (now - lastCollisionCheck > collisionCheckInterval) {
+                lastCollisionCheck = now;
+                
+                // Check building collisions less frequently
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    const bullet = bullets[i];
+                    for (let j = buildings.length - 1; j >= 0; j--) {
+                        const building = buildings[j];
+                        const distance = bullet.position.distanceTo(building.position);
+                        if (distance < explosionRadius) {
+                            createExplosion(building.position);
+                            scene.remove(building);
+                            buildings.splice(j, 1);
+                            scene.remove(bullet);
+                            bullets.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Update bullet positions
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.position.x += bullet.velocity.x;
+                bullet.position.y += bullet.velocity.y;
+                bullet.position.z += bullet.velocity.z;
+
+                // Remove old bullets
+                if (now - bullet.createdAt > bulletLifetime) {
+                    scene.remove(bullet);
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Update propeller rotation - more realistic speed
+            if (!isAirborne) {
+                // Slower on ground
+                propellerRotation += (throttle * propellerSpeed + minPropellerSpeed);
+            } else {
+                // Faster in air, based on speed
+                propellerRotation += Math.min(
+                    maxPropellerSpeed,
+                    (throttle * propellerSpeed + minPropellerSpeed) * (1 + speed/100)
+                );
+            }
+            propeller.rotation.z = propellerRotation;
+
+            // Update birds
+            birds.children.forEach((bird, index) => {
+                // Flap wings
+                bird.wingAngle += 0.2;
+                bird.children[1].rotation.z = Math.sin(bird.wingAngle) * 0.3;
+                
+                // Move bird
+                bird.yaw += bird.turnRate;
+                bird.position.x += Math.sin(bird.yaw) * bird.speed;
+                bird.position.z += Math.cos(bird.yaw) * bird.speed;
+                bird.rotation.y = bird.yaw;
+                
+                // Wrap birds around when they go too far
+                const halfBirdArea = birdArea / 2;
+                if (bird.position.x > halfBirdArea) bird.position.x = -halfBirdArea;
+                if (bird.position.x < -halfBirdArea) bird.position.x = halfBirdArea;
+                if (bird.position.z > halfBirdArea) bird.position.z = -halfBirdArea;
+                if (bird.position.z < -halfBirdArea) bird.position.z = halfBirdArea;
+            });
+
             // Update HUD
             document.getElementById('speed').textContent = Math.round(speed);
             document.getElementById('altitude').textContent = Math.round(altitude);
@@ -650,6 +1032,36 @@
         });
 
         animate();
+
+        // Add shooting function
+        function shoot() {
+            const now = Date.now();
+            if (now - lastShootTime < shootingCooldown) return;
+            lastShootTime = now;
+
+            const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+            bullet.position.copy(airplane.position);
+            bullet.rotation.copy(airplane.rotation);
+            bullet.createdAt = now;
+            
+            // Fix bullet velocity to shoot forward from plane's direction
+            bullet.velocity = {
+                x: -Math.sin(yaw) * bulletSpeed,  // Add back negative sign
+                y: Math.sin(pitch) * bulletSpeed,
+                z: -Math.cos(yaw) * bulletSpeed   // Add back negative sign
+            };
+            
+            scene.add(bullet);
+            bullets.push(bullet);
+        }
+
+        // Make sure Space key handler is properly set up
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.code === 'Space' || e.key === ' ') {  // Handle both Space and spacebar
+                shoot();
+            }
+        });
     </script>
 </body>
 </html> 
