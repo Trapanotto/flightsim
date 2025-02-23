@@ -16,6 +16,45 @@
             border-radius: 5px;
             line-height: 1.4;
         }
+        .touch-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: none;  /* Hidden by default, shown on touch devices */
+        }
+        .touch-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.3);
+            border: 2px solid white;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #throttle-controls {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            display: none;
+        }
+        #direction-controls {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            display: none;
+        }
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -28,6 +67,26 @@
         ↑/↓ - Pitch (pull back/DOWN to take off)<br>
         ←/→ - Turn Left/Right (Roll when airborne)<br>
         <div id="takeoff-message" style="display: none; color: #ff0; font-size: 1.2em; margin-top: 10px; font-weight: bold;">TAKEOFF</div>
+    </div>
+    <div id="throttle-controls" class="touch-controls">
+        <div class="control-row">
+            <div class="touch-button" id="throttle-up">W</div>
+        </div>
+        <div class="control-row">
+            <div class="touch-button" id="throttle-down">S</div>
+        </div>
+    </div>
+    <div id="direction-controls" class="touch-controls">
+        <div class="control-row">
+            <div class="touch-button" id="pitch-up">↑</div>
+        </div>
+        <div class="control-row">
+            <div class="touch-button" id="turn-left">←</div>
+            <div class="touch-button" id="turn-right">→</div>
+        </div>
+        <div class="control-row">
+            <div class="touch-button" id="pitch-down">↓</div>
+        </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -253,6 +312,44 @@
         const keys = {};
         document.addEventListener('keydown', (e) => keys[e.key] = true);
         document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        // Touch controls setup
+        function setupTouchControls() {
+            // Check if device supports touch
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                document.querySelectorAll('.touch-controls').forEach(control => {
+                    control.style.display = 'block';
+                });
+
+                // Helper function for touch events
+                function handleTouch(elementId, key, event) {
+                    const element = document.getElementById(elementId);
+                    if (!element) return;
+
+                    element.addEventListener(event, (e) => {
+                        e.preventDefault();
+                        keys[key] = event === 'touchstart';
+                    });
+                }
+
+                // Setup each control
+                const controls = [
+                    ['throttle-up', 'w'],
+                    ['throttle-down', 's'],
+                    ['pitch-up', 'ArrowUp'],
+                    ['pitch-down', 'ArrowDown'],
+                    ['turn-left', 'ArrowLeft'],
+                    ['turn-right', 'ArrowRight']
+                ];
+
+                controls.forEach(([elementId, key]) => {
+                    handleTouch(elementId, key, 'touchstart');
+                    handleTouch(elementId, key, 'touchend');
+                });
+            }
+        }
+
+        setupTouchControls();
 
         // Update camera far plane to see further
         camera.far = 3000;
