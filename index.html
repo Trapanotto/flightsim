@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Flight Simulator</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: monospace;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        Speed: <span id="speed">0</span> km/h<br>
+        Altitude: <span id="altitude">0</span> m<br>
+        <br>
+        Controls:<br>
+        W/S - Throttle Up/Down<br>
+        ↑/↓ - Pitch (pull back/DOWN to take off)<br>
+        ←/→ - Turn Left/Right (Roll when airborne)<br>
+        <div id="takeoff-message" style="display: none; color: #ff0; font-size: 1.2em; margin-top: 10px; font-weight: bold;">TAKEOFF</div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Initialize Three.js
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create airplane with more visible parts
+        const airplane = new THREE.Group();
+        
+        // Fuselage
+        const fuselage = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 0.8, 4),  // Made longer and taller
+            new THREE.MeshPhongMaterial({ color: 0x3366cc })  // Blue color
+        );
+        
+        // Main wing
+        const wing = new THREE.Mesh(
+            new THREE.BoxGeometry(7, 0.2, 1.5),  // Made wider
+            new THREE.MeshPhongMaterial({ color: 0x3366cc })
+        );
+        wing.position.y = 0.1;  // Slightly above center
+        
+        // Tail wing
+        const tailWing = new THREE.Mesh(
+            new THREE.BoxGeometry(2, 0.2, 0.8),
+            new THREE.MeshPhongMaterial({ color: 0x3366cc })
+        );
+        tailWing.position.z = -1.8;  // Place at back
+        tailWing.position.y = 0.3;   // Higher than main wing
+        
+        // Vertical stabilizer
+        const verticalStab = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 1, 1),
+            new THREE.MeshPhongMaterial({ color: 0x3366cc })
+        );
+        verticalStab.position.z = -1.8;
+        verticalStab.position.y = 0.5;
+
+        airplane.add(fuselage);
+        airplane.add(wing);
+        airplane.add(tailWing);
+        airplane.add(verticalStab);
+        scene.add(airplane);
+
+        // Create runway (larger and more visible)
+        const runway = new THREE.Group();
+        
+        // Main runway strip
+        const runwayStrip = new THREE.Mesh(
+            new THREE.PlaneGeometry(30, 200),
+            new THREE.MeshPhongMaterial({ color: 0x444444 }) // Dark gray
+        );
+        runwayStrip.rotation.x = -Math.PI / 2;
+        runway.add(runwayStrip);
+
+        // Runway markings
+        const markingMaterial = new THREE.MeshPhongMaterial({ color: 0xFFFFFF });
+        for (let i = -90; i <= 90; i += 20) {
+            const marking = new THREE.Mesh(
+                new THREE.PlaneGeometry(2, 10),
+                markingMaterial
+            );
+            marking.rotation.x = -Math.PI / 2;
+            marking.position.z = i;
+            marking.position.y = 0.01; // Slightly above runway to prevent z-fighting
+            runway.add(marking);
+        }
+        
+        runway.position.z = 20;
+        scene.add(runway);
+
+        // Create flat ground
+        const groundGeometry = new THREE.PlaneGeometry(4000, 4000);
+        const ground = new THREE.Mesh(
+            groundGeometry,
+            new THREE.MeshPhongMaterial({ 
+                color: 0x228B22,
+                flatShading: true 
+            })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.1;
+        scene.add(ground);
+
+        // Create skybox with larger size
+        const skyboxGeometry = new THREE.BoxGeometry(4000, 4000, 4000);
+        const skyboxMaterials = [
+            new THREE.MeshBasicMaterial({ 
+                color: new THREE.Color(0x87CEEB), // Light blue
+                side: THREE.BackSide 
+            }),
+            new THREE.MeshBasicMaterial({ 
+                color: new THREE.Color(0x87CEEB),
+                side: THREE.BackSide 
+            }),
+            new THREE.MeshBasicMaterial({ 
+                color: new THREE.Color(0x4169E1), // Royal blue for top
+                side: THREE.BackSide 
+            }),
+            new THREE.MeshBasicMaterial({ 
+                color: new THREE.Color(0xADD8E6), // Light blue for bottom
+                side: THREE.BackSide 
+            }),
+            new THREE.MeshBasicMaterial({ 
+                color: new THREE.Color(0x87CEEB),
+                side: THREE.BackSide 
+            }),
+            new THREE.MeshBasicMaterial({ 
+                color: new THREE.Color(0x87CEEB),
+                side: THREE.BackSide 
+            })
+        ];
+        
+        const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterials);
+        scene.add(skybox);
+
+        // Fix building creation function
+        function createBuilding(x, z, height) {
+            const building = new THREE.Group();
+            
+            // Main building body
+            const bodyGeometry = new THREE.BoxGeometry(
+                10 + Math.random() * 10,
+                height,
+                10 + Math.random() * 10
+            );
+            const bodyMaterial = new THREE.MeshPhongMaterial({
+                color: new THREE.Color(
+                    0.5 + Math.random() * 0.2,
+                    0.5 + Math.random() * 0.2,
+                    0.5 + Math.random() * 0.2
+                )
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            
+            // Windows
+            const windowMaterial = new THREE.MeshPhongMaterial({
+                color: 0xFFFFFF,
+                emissive: 0x555555
+            });
+            
+            for (let i = 1; i < height; i += 4) {
+                for (let j = -1; j <= 1; j += 1) {
+                    const window = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.5, 2, 2),
+                        windowMaterial
+                    );
+                    window.position.set(
+                        bodyGeometry.parameters.width/2,
+                        i - height/2,
+                        j * 3
+                    );
+                    body.add(window);
+                    
+                    const window2 = window.clone();
+                    window2.position.x = -bodyGeometry.parameters.width/2;
+                    body.add(window2);
+                }
+            }
+            
+            building.add(body);
+            building.position.set(x, height/2, z);  // Removed groundHeight
+            return building;
+        }
+
+        // Add buildings to scene
+        const cityArea = 1600;  // Doubled city area
+        const buildingCount = 100;  // More buildings
+        const minHeight = 30;
+        const maxHeight = 150;
+        
+        for (let i = 0; i < buildingCount; i++) {
+            const x = (Math.random() - 0.5) * cityArea;
+            const z = (Math.random() - 0.5) * cityArea;
+            
+            // Don't place buildings near the runway
+            if (Math.abs(x) > 50 || Math.abs(z) > 100) {
+                const height = minHeight + Math.random() * (maxHeight - minHeight);
+                const building = createBuilding(x, z, height);
+                scene.add(building);
+            }
+        }
+
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        scene.add(directionalLight);
+
+        // Camera position
+        camera.position.set(0, 2, -5);
+        camera.lookAt(airplane.position);
+
+        // Physics variables
+        let speed = 0;
+        let altitude = 0;
+        let pitch = 0;
+        let roll = 0;  // New roll variable
+        let yaw = 0;   // New yaw (turning) variable
+        let throttle = 0;
+        const takeoffSpeed = 25;
+        let isAirborne = false;
+        let takeoffMessageTimer = null;  // Add timer variable
+        
+        // Aircraft characteristics
+        const maxSpeed = 100;
+        const acceleration = 0.4;
+        const deceleration = 0.2;
+        const dragCoefficient = 0.002;
+        const liftCoefficient = 0.05;
+        const gravity = 0.05;
+        const pitchRate = 0.015;
+        const rollRate = 0.02;    // New roll rate
+        const turnRate = 0.015;   // New turn rate
+        const liftMultiplier = 0.3;
+
+        // Controls
+        const keys = {};
+        document.addEventListener('keydown', (e) => keys[e.key] = true);
+        document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        // Update camera far plane to see further
+        camera.far = 3000;
+        camera.updateProjectionMatrix();
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Handle controls
+            if (keys['ArrowUp']) {
+                // Push forward (nose down)
+                pitch = Math.max(pitch - pitchRate, -Math.PI / 4);
+            } else if (keys['ArrowDown']) {
+                // Pull back (nose up)
+                pitch = Math.min(pitch + pitchRate, Math.PI / 4);
+            } else {
+                if (!isAirborne) {
+                    pitch *= 0.95;
+                }
+            }
+
+            // Left/Right controls
+            if (keys['ArrowLeft']) {
+                if (isAirborne) {
+                    roll = Math.min(roll + rollRate, Math.PI / 3);  // Reversed roll direction
+                }
+                yaw += turnRate * (isAirborne ? Math.abs(roll) : 1);  // Reversed yaw direction
+            } else if (keys['ArrowRight']) {
+                if (isAirborne) {
+                    roll = Math.max(roll - rollRate, -Math.PI / 3);  // Reversed roll direction
+                }
+                yaw -= turnRate * (isAirborne ? Math.abs(roll) : 1);  // Reversed yaw direction
+            } else {
+                roll *= 0.95; // Return to level flight
+            }
+
+            // Throttle control with W/S
+            if (keys['w'] || keys['W']) {
+                throttle = Math.min(throttle + 0.015, 1);
+            } else if (keys['s'] || keys['S']) {
+                throttle = Math.max(throttle - 0.015, 0);
+            }
+
+            // Physics calculations
+            const currentAcceleration = (throttle * acceleration) - (speed * dragCoefficient);
+            speed = Math.max(0, Math.min(maxSpeed, speed + currentAcceleration));
+
+            // Takeoff message handling
+            const takeoffMessage = document.getElementById('takeoff-message');
+            if (takeoffMessage && speed >= takeoffSpeed && !isAirborne) {
+                takeoffMessage.style.display = 'block';
+            }
+
+            // Lift calculation
+            const angleOfAttack = pitch + 0.1;
+            const lift = speed * liftCoefficient * Math.sin(angleOfAttack);
+
+            if (speed >= takeoffSpeed && !isAirborne && pitch > 0.1) {
+                isAirborne = true;
+                // Start timer to hide message
+                if (takeoffMessage) {
+                    if (takeoffMessageTimer) clearTimeout(takeoffMessageTimer);
+                    takeoffMessageTimer = setTimeout(() => {
+                        takeoffMessage.style.display = 'none';
+                    }, 2000);
+                }
+            }
+
+            if (isAirborne) {
+                // Apply lift and gravity with reduced multiplier
+                altitude += (lift - gravity) * liftMultiplier;
+                
+                if (altitude <= 0) {
+                    altitude = 0;
+                    isAirborne = false;
+                }
+            } else {
+                altitude = 0;
+            }
+
+            // Update airplane position and rotation
+            airplane.position.y = altitude;
+            airplane.rotation.x = pitch;  // Removed negative sign to fix pitch direction
+            airplane.rotation.z = roll;
+            
+            // Update forward movement with direction
+            const movement = speed * 0.01;
+            airplane.position.x -= Math.sin(yaw) * movement;  // Added negative sign
+            airplane.position.z -= Math.cos(yaw) * movement;  // Added negative sign
+            airplane.rotation.y = yaw;
+
+            // Update camera to follow from behind
+            const cameraDistance = 5;
+            camera.position.x = airplane.position.x + Math.sin(yaw) * cameraDistance;  // Changed minus to plus
+            camera.position.z = airplane.position.z + Math.cos(yaw) * cameraDistance;  // Changed minus to plus
+            camera.position.y = airplane.position.y + 2;
+            camera.lookAt(airplane.position);
+
+            // Update skybox position to follow camera
+            skybox.position.copy(camera.position);
+
+            // Update HUD
+            document.getElementById('speed').textContent = Math.round(speed);
+            document.getElementById('altitude').textContent = Math.round(altitude);
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html> 
