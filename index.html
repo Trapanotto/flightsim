@@ -18,42 +18,137 @@
         }
         .touch-controls {
             position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            display: none;  /* Hidden by default, shown on touch devices */
+            pointer-events: none;
         }
         .touch-button {
-            width: 60px;
-            height: 60px;
-            background: rgba(255,255,255,0.3);
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.4);
             border: 2px solid white;
             border-radius: 50%;
             color: white;
-            font-size: 24px;
+            font-size: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
             user-select: none;
             -webkit-user-select: none;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            pointer-events: auto;
+            cursor: pointer;
+            touch-action: none;
         }
         #throttle-controls {
             position: fixed;
-            left: 20px;
-            bottom: 20px;
-            display: none;
+            right: 40px;
+            bottom: 40px;
         }
         #direction-controls {
             position: fixed;
-            right: 20px;
-            bottom: 20px;
-            display: none;
+            left: 40px;
+            bottom: 40px;
         }
-        .control-row {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin: 10px 0;
+        /* Specific button positions for direction controls */
+        #pitch-up {
+            position: absolute;
+            bottom: 160px;
+            left: 80px;
+        }
+        
+        #turn-left {
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+        }
+        
+        #turn-right {
+            position: absolute;
+            bottom: 80px;
+            left: 160px;
+        }
+        
+        #pitch-down {
+            position: absolute;
+            bottom: 0;
+            left: 80px;
+        }
+        
+        /* Specific button positions for throttle controls */
+        #throttle-up {
+            position: absolute;
+            bottom: 120px;
+            right: 40px;
+        }
+        
+        #throttle-down {
+            position: absolute;
+            bottom: 20px;
+            right: 40px;
+        }
+        @media (max-width: 768px) {
+            .touch-button {
+                width: 65px;
+                height: 65px;
+                font-size: 26px;
+            }
+            /* Adjust positions for smaller screens */
+            #pitch-up { 
+                bottom: 130px;
+                left: 65px;
+            }
+            #turn-left {
+                bottom: 65px;
+                left: 0;
+            }
+            #turn-right {
+                bottom: 65px;
+                left: 130px;
+            }
+            #pitch-down {
+                bottom: 0;
+                left: 65px;
+            }
+            #throttle-up {
+                bottom: 100px;
+                right: 30px;
+            }
+            #throttle-down {
+                bottom: 15px;
+                right: 30px;
+            }
+        }
+        @media (max-width: 480px) {
+            .touch-button {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            /* Adjust positions for mobile screens */
+            #pitch-up {
+                bottom: 100px;
+                left: 50px;
+            }
+            #turn-left {
+                bottom: 50px;
+                left: 0;
+            }
+            #turn-right {
+                bottom: 50px;
+                left: 100px;
+            }
+            #pitch-down {
+                bottom: 0;
+                left: 50px;
+            }
+            #throttle-up {
+                bottom: 80px;
+                right: 20px;
+            }
+            #throttle-down {
+                bottom: 10px;
+                right: 20px;
+            }
         }
     </style>
 </head>
@@ -69,24 +164,14 @@
         <div id="takeoff-message" style="display: none; color: #ff0; font-size: 1.2em; margin-top: 10px; font-weight: bold;">TAKEOFF</div>
     </div>
     <div id="throttle-controls" class="touch-controls">
-        <div class="control-row">
-            <div class="touch-button" id="throttle-up">W</div>
-        </div>
-        <div class="control-row">
-            <div class="touch-button" id="throttle-down">S</div>
-        </div>
+        <div class="touch-button" id="throttle-up">W</div>
+        <div class="touch-button" id="throttle-down">S</div>
     </div>
     <div id="direction-controls" class="touch-controls">
-        <div class="control-row">
-            <div class="touch-button" id="pitch-up">↑</div>
-        </div>
-        <div class="control-row">
-            <div class="touch-button" id="turn-left">←</div>
-            <div class="touch-button" id="turn-right">→</div>
-        </div>
-        <div class="control-row">
-            <div class="touch-button" id="pitch-down">↓</div>
-        </div>
+        <div class="touch-button" id="pitch-up">↑</div>
+        <div class="touch-button" id="turn-left">←</div>
+        <div class="touch-button" id="turn-right">→</div>
+        <div class="touch-button" id="pitch-down">↓</div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -207,6 +292,56 @@
         const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterials);
         scene.add(skybox);
 
+        // Create clouds
+        function createCloud() {
+            const cloudGeometry = new THREE.SphereGeometry(15, 8, 8);
+            const cloudMaterial = new THREE.MeshPhongMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.8,
+                flatShading: true
+            });
+
+            const cloud = new THREE.Group();
+            
+            // Create random blob-like cloud shape
+            for (let i = 0; i < 5 + Math.random() * 5; i++) {
+                const blob = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                blob.position.set(
+                    Math.random() * 20 - 10,
+                    Math.random() * 10 - 5,
+                    Math.random() * 20 - 10
+                );
+                blob.scale.set(
+                    0.5 + Math.random() * 0.5,
+                    0.5 + Math.random() * 0.3,
+                    0.5 + Math.random() * 0.5
+                );
+                cloud.add(blob);
+            }
+            
+            return cloud;
+        }
+
+        // Add clouds to scene
+        const clouds = new THREE.Group();
+        const cloudCount = 50;
+        const cloudArea = 2000;  // Area where clouds can spawn
+        const minCloudHeight = 200;
+        const maxCloudHeight = 400;
+
+        for (let i = 0; i < cloudCount; i++) {
+            const cloud = createCloud();
+            cloud.position.set(
+                (Math.random() - 0.5) * cloudArea,
+                minCloudHeight + Math.random() * (maxCloudHeight - minCloudHeight),
+                (Math.random() - 0.5) * cloudArea
+            );
+            cloud.rotation.y = Math.random() * Math.PI * 2;
+            clouds.add(cloud);
+        }
+        scene.add(clouds);
+
         // Fix building creation function
         function createBuilding(x, z, height) {
             const building = new THREE.Group();
@@ -289,24 +424,23 @@
         let speed = 0;
         let altitude = 0;
         let pitch = 0;
-        let roll = 0;  // New roll variable
-        let yaw = 0;   // New yaw (turning) variable
+        let roll = 0;
+        let yaw = 0;
         let throttle = 0;
-        const takeoffSpeed = 25;
         let isAirborne = false;
         let takeoffMessageTimer = null;  // Add timer variable
         
-        // Aircraft characteristics
-        const maxSpeed = 100;
-        const acceleration = 0.4;
-        const deceleration = 0.2;
-        const dragCoefficient = 0.002;
-        const liftCoefficient = 0.05;
-        const gravity = 0.05;
-        const pitchRate = 0.015;
-        const rollRate = 0.02;    // New roll rate
-        const turnRate = 0.015;   // New turn rate
-        const liftMultiplier = 0.3;
+        // Aircraft characteristics - simplified arcade style
+        const maxGroundSpeed = 150;    // Max speed on ground
+        const maxAirSpeed = 200;       // Max speed in air
+        const takeoffSpeed = 60;       // Speed needed for takeoff
+        const acceleration = 0.8;      // Ground acceleration
+        const deceleration = 0.3;      // Ground deceleration
+        const pitchRate = 0.015;       // Reduced pitch rate
+        const rollRate = 0.02;         // Roll control sensitivity
+        const turnRate = 0.02;         // Turn rate
+        const gravity = 0.1;           // Reduced gravity
+        const liftRate = 0.05;         // Reduced lift rate significantly
 
         // Controls
         const keys = {};
@@ -315,38 +449,66 @@
 
         // Touch controls setup
         function setupTouchControls() {
-            // Check if device supports touch
-            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-                document.querySelectorAll('.touch-controls').forEach(control => {
-                    control.style.display = 'block';
-                });
+            // Helper function for both touch and click events
+            function setupButton(elementId, key) {
+                const element = document.getElementById(elementId);
+                if (!element) return;
 
-                // Helper function for touch events
-                function handleTouch(elementId, key, event) {
-                    const element = document.getElementById(elementId);
-                    if (!element) return;
-
-                    element.addEventListener(event, (e) => {
-                        e.preventDefault();
-                        keys[key] = event === 'touchstart';
-                    });
+                function pressButton(e) {
+                    e.preventDefault();
+                    keys[key] = true;
+                    element.style.background = 'rgba(255,255,255,0.6)';
+                    element.style.transform = 'scale(0.95)';
                 }
 
-                // Setup each control
-                const controls = [
-                    ['throttle-up', 'w'],
-                    ['throttle-down', 's'],
-                    ['pitch-up', 'ArrowUp'],
-                    ['pitch-down', 'ArrowDown'],
-                    ['turn-left', 'ArrowLeft'],
-                    ['turn-right', 'ArrowRight']
-                ];
+                function releaseButton(e) {
+                    e.preventDefault();
+                    keys[key] = false;
+                    element.style.background = 'rgba(255,255,255,0.4)';
+                    element.style.transform = 'scale(1)';
+                }
 
-                controls.forEach(([elementId, key]) => {
-                    handleTouch(elementId, key, 'touchstart');
-                    handleTouch(elementId, key, 'touchend');
-                });
+                // Touch events
+                element.addEventListener('touchstart', pressButton, { passive: false });
+                element.addEventListener('touchend', releaseButton, { passive: false });
+                element.addEventListener('touchcancel', releaseButton, { passive: false });
+
+                // Mouse events
+                element.addEventListener('mousedown', pressButton);
+                element.addEventListener('mouseup', releaseButton);
+                element.addEventListener('mouseleave', releaseButton);
+
+                // Prevent text selection
+                element.addEventListener('selectstart', (e) => e.preventDefault());
             }
+
+            // Setup each control
+            const controls = [
+                ['throttle-up', 'w'],
+                ['throttle-down', 's'],
+                ['pitch-up', 'ArrowUp'],
+                ['pitch-down', 'ArrowDown'],
+                ['turn-left', 'ArrowLeft'],
+                ['turn-right', 'ArrowRight']
+            ];
+
+            controls.forEach(([elementId, key]) => {
+                setupButton(elementId, key);
+            });
+
+            // Prevent page scrolling when touching the game area
+            document.addEventListener('touchmove', (e) => {
+                if (e.target.closest('.touch-controls')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            // Prevent context menu on long press
+            document.addEventListener('contextmenu', (e) => {
+                if (e.target.closest('.touch-controls')) {
+                    e.preventDefault();
+                }
+            });
         }
 
         setupTouchControls();
@@ -359,59 +521,60 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // Handle controls
-            if (keys['ArrowUp']) {
-                // Push forward (nose down)
-                pitch = Math.max(pitch - pitchRate, -Math.PI / 4);
-            } else if (keys['ArrowDown']) {
-                // Pull back (nose up)
-                pitch = Math.min(pitch + pitchRate, Math.PI / 4);
-            } else {
-                if (!isAirborne) {
-                    pitch *= 0.95;
-                }
+            // Handle throttle
+            if (keys['w'] || keys['W']) {
+                throttle = Math.min(throttle + 0.02, 1);
+            } else if (keys['s'] || keys['S']) {
+                throttle = Math.max(throttle - 0.02, 0);
             }
 
-            // Left/Right controls
+            // Handle pitch
+            if (keys['ArrowDown']) {  // Pull back (nose up)
+                if (isAirborne || speed >= takeoffSpeed * 0.8) {
+                    pitch = Math.min(pitch + pitchRate, Math.PI / 4);
+                }
+            } else if (keys['ArrowUp']) {  // Push forward (nose down)
+                if (isAirborne) {
+                    pitch = Math.max(pitch - pitchRate, -Math.PI / 4);
+                }
+            } else {
+                pitch *= 0.95;  // Return to level
+            }
+
+            // Handle turning
             if (keys['ArrowLeft']) {
                 if (isAirborne) {
-                    roll = Math.min(roll + rollRate, Math.PI / 3);  // Reversed roll direction
+                    roll = Math.min(roll + rollRate, Math.PI / 3);
                 }
-                yaw += turnRate * (isAirborne ? Math.abs(roll) : 1);  // Reversed yaw direction
+                yaw += turnRate * (isAirborne ? Math.abs(roll) * 0.5 : 1);
             } else if (keys['ArrowRight']) {
                 if (isAirborne) {
-                    roll = Math.max(roll - rollRate, -Math.PI / 3);  // Reversed roll direction
+                    roll = Math.max(roll - rollRate, -Math.PI / 3);
                 }
-                yaw -= turnRate * (isAirborne ? Math.abs(roll) : 1);  // Reversed yaw direction
+                yaw -= turnRate * (isAirborne ? Math.abs(roll) * 0.5 : 1);
             } else {
-                roll *= 0.95; // Return to level flight
+                roll *= 0.95;  // Return to level
             }
 
-            // Throttle control with W/S
-            if (keys['w'] || keys['W']) {
-                throttle = Math.min(throttle + 0.015, 1);
-            } else if (keys['s'] || keys['S']) {
-                throttle = Math.max(throttle - 0.015, 0);
+            // Update speed
+            if (!isAirborne) {
+                // Ground movement
+                if (throttle > 0) {
+                    speed += throttle * acceleration;
+                } else {
+                    speed = Math.max(0, speed - deceleration);
+                }
+                speed = Math.min(speed, maxGroundSpeed);
+            } else {
+                // Air movement
+                speed = Math.max(0, Math.min(maxAirSpeed, speed + (throttle - 0.5) * acceleration));
             }
 
-            // Physics calculations
-            const currentAcceleration = (throttle * acceleration) - (speed * dragCoefficient);
-            speed = Math.max(0, Math.min(maxSpeed, speed + currentAcceleration));
-
-            // Takeoff message handling
-            const takeoffMessage = document.getElementById('takeoff-message');
-            if (takeoffMessage && speed >= takeoffSpeed && !isAirborne) {
-                takeoffMessage.style.display = 'block';
-            }
-
-            // Lift calculation
-            const angleOfAttack = pitch + 0.1;
-            const lift = speed * liftCoefficient * Math.sin(angleOfAttack);
-
-            if (speed >= takeoffSpeed && !isAirborne && pitch > 0.1) {
+            // Check for takeoff
+            if (!isAirborne && speed >= takeoffSpeed && pitch > 0.1) {
                 isAirborne = true;
-                // Start timer to hide message
                 if (takeoffMessage) {
+                    takeoffMessage.style.display = 'block';
                     if (takeoffMessageTimer) clearTimeout(takeoffMessageTimer);
                     takeoffMessageTimer = setTimeout(() => {
                         takeoffMessage.style.display = 'none';
@@ -419,13 +582,18 @@
                 }
             }
 
+            // Update altitude with more gradual changes
             if (isAirborne) {
-                // Apply lift and gravity with reduced multiplier
-                altitude += (lift - gravity) * liftMultiplier;
+                // More gradual altitude changes
+                const liftForce = (pitch * speed * liftRate);
+                const verticalSpeed = liftForce - gravity;
+                altitude += verticalSpeed;
                 
+                // Prevent sudden drops
                 if (altitude <= 0) {
                     altitude = 0;
                     isAirborne = false;
+                    speed *= 0.8;  // Reduce speed on landing
                 }
             } else {
                 altitude = 0;
@@ -433,14 +601,13 @@
 
             // Update airplane position and rotation
             airplane.position.y = altitude;
-            airplane.rotation.x = pitch;  // Removed negative sign to fix pitch direction
+            airplane.rotation.x = pitch;
             airplane.rotation.z = roll;
-            
-            // Update forward movement with direction
-            const movement = speed * 0.01;
-            airplane.position.x -= Math.sin(yaw) * movement;  // Added negative sign
-            airplane.position.z -= Math.cos(yaw) * movement;  // Added negative sign
             airplane.rotation.y = yaw;
+
+            const movement = speed * 0.01;
+            airplane.position.x -= Math.sin(yaw) * movement;
+            airplane.position.z -= Math.cos(yaw) * movement;
 
             // Update camera to follow from behind
             const cameraDistance = 5;
@@ -451,6 +618,22 @@
 
             // Update skybox position to follow camera
             skybox.position.copy(camera.position);
+
+            // Move clouds slowly
+            clouds.children.forEach((cloud, index) => {
+                cloud.position.x += Math.sin(Date.now() * 0.0001 + index) * 0.1;
+                cloud.position.z += Math.cos(Date.now() * 0.0001 + index) * 0.1;
+                
+                // Wrap clouds around when they go too far
+                const halfCloudArea = cloudArea / 2;
+                if (cloud.position.x > halfCloudArea) cloud.position.x = -halfCloudArea;
+                if (cloud.position.x < -halfCloudArea) cloud.position.x = halfCloudArea;
+                if (cloud.position.z > halfCloudArea) cloud.position.z = -halfCloudArea;
+                if (cloud.position.z < -halfCloudArea) cloud.position.z = halfCloudArea;
+                
+                // Slowly rotate clouds
+                cloud.rotation.y += 0.001;
+            });
 
             // Update HUD
             document.getElementById('speed').textContent = Math.round(speed);
